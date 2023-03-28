@@ -21,6 +21,10 @@ export class RoleService {
     return role;
   }
 
+  async findRole(roleType: string) {
+    return await this.roleRepo.findOneBy({ role: roleType });
+  }
+
   removeRole(@Param('id') id: number) {
     return 'Delete ROute ';
   }

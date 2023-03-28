@@ -13,15 +13,17 @@ import * as bcrypt from 'bcrypt';
 import { LoginUserDto } from './dtos/login-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { JwtService } from '@nestjs/jwt';
+import { RoleService } from 'src/role/role.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
     private readonly jwtService: JwtService,
+    private readonly roleService: RoleService,
   ) {}
 
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
     return hashedPassword;
@@ -41,7 +43,6 @@ export class UserService {
       throw new BadRequestException('Invalid password');
     }
 
-    const payload = user.email;
     const accessToken = this.jwtService.sign({
       email: user.email,
       id: user.id,
@@ -51,9 +52,14 @@ export class UserService {
   }
 
   async createUser(@Body() createUserDto: CreateUserDto) {
-    const { email, password } = createUserDto;
+    const { email, password, role } = createUserDto;
     const hashedPassword = await this.hashPassword(password);
-    const user = this.userRepo.create({ email, password: hashedPassword });
+    const assignedRole = await this.roleService.findRole(role);
+    const user = this.userRepo.create({
+      email,
+      password: hashedPassword,
+      role: assignedRole,
+    });
     try {
       await this.userRepo.save(user);
       return user;
@@ -76,6 +82,33 @@ export class UserService {
       throw new NotFoundException('Not found');
     }
     return user;
+  }
+
+  async sendOtp(email: string) {
+    const otp = Math.floor(Math.random() * 999999);
+    const user = await this.findUser(email);
+    user.otp = otp;
+    //send email here
+    return await this.userRepo.save(user);
+  }
+
+  async resetPassword(otp: number, email: string, password: string) {
+    // find user by email and otp
+    const user = await this.userRepo.findOne({ where: { email, otp } });
+
+    if (!user) {
+      throw new NotFoundException('user not found');
+    }
+
+    const hashedPassword = await this.hashPassword(password);
+    user.password = hashedPassword;
+    user.otp = null;
+
+    return await this.userRepo.save(user);
+  }
+
+  async findUser(email: string) {
+    return await this.userRepo.findOneBy({ email });
   }
 
   async updateUser(

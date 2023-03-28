@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -29,6 +30,11 @@ export class UserController {
     return this.userService.getUser(id);
   }
 
+  @Post('reset')
+  reset(@Body() body: any) {
+    return this.userService.resetPassword(body.otp, body.email, body.password);
+  }
+
   @Post()
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.userService.createUser(createUserDto);
@@ -37,6 +43,12 @@ export class UserController {
   @Post('login')
   loginUser(@Body() loginUserDto: LoginUserDto) {
     return this.userService.loginUser(loginUserDto);
+  }
+
+  @Patch('send-otp')
+  sendotp(@Body() body: any) {
+    console.log(body.email);
+    return this.userService.sendOtp(body.email);
   }
 
   @UseGuards(JwtAuthGuard)
