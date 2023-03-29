@@ -4,10 +4,12 @@ import {
   PrimaryGeneratedColumn,
   Unique,
   ManyToOne,
-} from 'typeorm';
+  OneToMany,
+} from "typeorm";
 
-import { Role } from 'src/role/entity/role.entity';
-import { Organization } from 'src/organizations/entities/organization.entity';
+import { Role } from "src/role/entity/role.entity";
+import { Organization } from "src/organizations/entities/organization.entity";
+import { Complaint } from "src/complaints/entities/complaint.entity";
 
 @Entity()
 export class User {
@@ -15,13 +17,13 @@ export class User {
   id: number;
 
   @Column()
-  @Unique(['email'])
+  @Unique(["email"])
   email: string;
 
   @Column()
   password: string;
 
-  @Column()
+  @Column({ nullable: true })
   name: string;
 
   @ManyToOne(() => Role, (role) => role.users)
@@ -29,6 +31,9 @@ export class User {
 
   @ManyToOne(() => Organization, (org) => org.user)
   organization: Organization;
+
+  @OneToMany(() => Complaint, (complaint) => complaint.user)
+  complaint: Complaint;
 
   @Column({ nullable: true })
   otp: number;

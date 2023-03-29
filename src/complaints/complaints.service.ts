@@ -1,23 +1,53 @@
-import { Injectable } from '@nestjs/common';
-import { CreateComplaintDto } from './dto/create-complaint.dto';
-import { UpdateComplaintDto } from './dto/update-complaint.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateComplaintDto } from "./dto/create-complaint.dto";
+import { UpdateComplaintDto } from "./dto/update-complaint.dto";
+import { Complaint } from "./entities/complaint.entity";
 
 @Injectable()
 export class ComplaintsService {
-  create(createComplaintDto: CreateComplaintDto) {
-    return 'This action adds a new complaint';
+  constructor(
+    @InjectRepository(Complaint)
+    private readonly complaintsRepo: Repository<Complaint>
+  ) {}
+
+  async create(currentUser, createComplaintDto: CreateComplaintDto) {
+    const user = currentUser.id;
+    const complaint = this.complaintsRepo.create({
+      ...createComplaintDto,
+      user,
+    });
+
+    return await this.complaintsRepo.save(complaint);
   }
 
-  findAll() {
-    return `This action returns all complaints`;
+  async findAll() {
+    return await this.complaintsRepo.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} complaint`;
+  async findOne(id: number) {
+    return this.complaintsRepo.findOneBy({ id });
   }
 
-  update(id: number, updateComplaintDto: UpdateComplaintDto) {
-    return `This action updates a #${id} complaint`;
+  async findAllByUser(userId: number) {
+    return await this.complaintsRepo
+      .createQueryBuilder("complaint")
+      .innerJoinAndSelect("complaint.user", "user")
+      .where("user.id = :userId", { userId })
+      .getMany();
+  }
+
+  async update(id: number, updateComplaintDto: UpdateComplaintDto) {
+    const complaint = await this.complaintsRepo.findOneBy({ id });
+    console.log(complaint);
+
+    if (!complaint) throw new NotFoundException();
+
+    Object.assign(complaint, updateComplaintDto);
+    console.log(complaint);
+
+    return await this.complaintsRepo.save(complaint);
   }
 
   remove(id: number) {

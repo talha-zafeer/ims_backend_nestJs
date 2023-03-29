@@ -5,8 +5,8 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { User } from 'src/user/entity/user.entity';
+} from "typeorm";
+import { User } from "src/user/entity/user.entity";
 
 @Entity()
 export class Organization {
@@ -19,7 +19,7 @@ export class Organization {
   @Column()
   bio: string;
 
-  @Column('jsonb')
+  @Column("jsonb")
   address: {
     street: string;
     city: string;
@@ -28,10 +28,10 @@ export class Organization {
   };
 
   @Column()
-  repName: string;
+  rep_name: string;
 
   @Column()
-  repContact: number;
+  rep_contact: string;
 
   @OneToMany(() => User, (user) => user.organization)
   user: User;

@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { RoleModule } from './role/role.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ComplaintsModule } from './complaints/complaints.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ComplaintsModule } from './complaints/complaints.module';
     RoleModule,
     OrganizationsModule,
     ComplaintsModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
