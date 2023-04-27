@@ -7,6 +7,7 @@ export class CreateOrganizationDto {
     country: string;
     zipcode: string;
   };
-  repName: string;
-  repContact: number;
+  rep_name: string;
+  rep_contact: string;
+  logo: string;
 }

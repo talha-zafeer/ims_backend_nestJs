@@ -7,32 +7,41 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { JwtAuthGuard } from 'src/guards/jwt.auth.guard';
-import { CreateUserDto } from './dtos/create-user.dto';
-import { LoginUserDto } from './dtos/login-user.dto';
-import { UserService } from './user.service';
+} from "@nestjs/common";
+import { Request } from "express";
+import { JwtAuthGuard } from "src/guards/jwt.auth.guard";
+import { CreateUserDto } from "./dtos/create-user.dto";
+import { LoginUserDto } from "./dtos/login-user.dto";
+import { UserService } from "./user.service";
+import { AuthGuard } from "@nestjs/passport";
 
-@Controller('user')
+@Controller("users")
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  getUsers() {
-    return 'user get function';
+  @UseGuards(AuthGuard("jwt"))
+  getUsers(@Req() req: Request) {
+    return this.userService.getUsers(req);
   }
 
-  @Get(':id')
-  findUser(@Param('id') id: number) {
+  @Get("org/:id")
+  @UseGuards(AuthGuard("jwt"))
+  findOrgUsers(@Param("id") id: number, @Req() req: Request) {
+    return this.userService.findOrgUsers(id, req);
+  }
+  @Get(":id")
+  findUser(@Param("id") id: number) {
     return this.userService.getUser(id);
   }
 
-  @Post('reset')
-  reset(@Body() body: any) {
-    return this.userService.resetPassword(body.otp, body.email, body.password);
+  @Post("reset")
+  @UseGuards(AuthGuard("jwt"))
+  reset(@Body() body: any, @Req() req: Request) {
+    return this.userService.resetPassword(body.password, req);
   }
 
   @Post()
@@ -40,15 +49,9 @@ export class UserController {
     return this.userService.createUser(createUserDto);
   }
 
-  @Post('login')
+  @Post("login")
   loginUser(@Body() loginUserDto: LoginUserDto) {
     return this.userService.loginUser(loginUserDto);
-  }
-
-  @Patch('send-otp')
-  sendotp(@Body() body: any) {
-    console.log(body.email);
-    return this.userService.sendOtp(body.email);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -59,6 +62,6 @@ export class UserController {
 
   @Delete()
   deleteUser() {
-    return 'Delete User';
+    return "Delete User";
   }
 }

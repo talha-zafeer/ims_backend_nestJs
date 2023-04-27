@@ -4,23 +4,24 @@ import {
   Injectable,
   NotFoundException,
   Param,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreateUserDto } from './dtos/create-user.dto';
-import { User } from './entity/user.entity';
-import * as bcrypt from 'bcrypt';
-import { LoginUserDto } from './dtos/login-user.dto';
-import { UpdateUserDto } from './dtos/update-user.dto';
-import { JwtService } from '@nestjs/jwt';
-import { RoleService } from 'src/role/role.service';
+  Query,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateUserDto } from "./dtos/create-user.dto";
+import { User } from "./entity/user.entity";
+import * as bcrypt from "bcrypt";
+import { LoginUserDto } from "./dtos/login-user.dto";
+import { UpdateUserDto } from "./dtos/update-user.dto";
+import { JwtService } from "@nestjs/jwt";
+import { RoleService } from "src/role/role.service";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly roleService: RoleService,
+    private readonly roleService: RoleService
   ) {}
 
   async hashPassword(password: string): Promise<string> {
@@ -40,15 +41,24 @@ export class UserService {
     const isAutenticated = await bcrypt.compare(password, user.password);
 
     if (!isAutenticated) {
-      throw new BadRequestException('Invalid password');
+      throw new BadRequestException("Invalid password");
     }
+
+    const queryBuilder = this.userRepo
+      .createQueryBuilder("user")
+      .select("user.roleId", "roleId")
+      .where("user.email = :email", { email })
+      .take(1);
+    const result = await queryBuilder.getRawOne();
 
     const accessToken = this.jwtService.sign({
       email: user.email,
-      id: user.id,
+      role: result.roleId,
     });
 
-    return { accessToken, user };
+    console.log(result.role);
+
+    return { accessToken, role: result.roleId };
   }
 
   async createUser(@Body() createUserDto: CreateUserDto) {
@@ -68,7 +78,53 @@ export class UserService {
     }
   }
 
-  async deleteUser(@Param('id') id: number) {
+  async findOrgUsers(id: number, req) {
+    const { role } = req.user;
+
+    const users = await this.userRepo
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.role", "role")
+      .leftJoinAndSelect("user.org", "org")
+      .where("org.id = :orgId", { orgId: id })
+      .andWhere("role.id = :roleId", { roleId: role })
+      .getMany();
+
+    return users.map(({ org, ...user }) => ({
+      ...user,
+      orgName: org.name,
+      orgBio: org.bio,
+      orgAddress: org.address,
+      repName: org.rep_name,
+      repContact: org.rep_contact,
+    }));
+  }
+
+  async getUsers(req) {
+    if (req.user.role === 1) {
+      const users = await this.userRepo
+        .createQueryBuilder("user")
+        .select([
+          "user.id",
+          "user.name",
+          "user.email",
+          "user.contact",
+          "org.name",
+        ])
+        .innerJoin("user.org", "org")
+        .where("user.roleId = :roleId", { roleId: 2 })
+        .getMany();
+
+      return users.map(({ org, ...user }) => ({ ...user, orgName: org.name }));
+    }
+    if (req.user.role === 2) {
+      return await this.userRepo.find({
+        relations: { role: true },
+        where: { role: { id: 3 } },
+      });
+    }
+  }
+
+  async deleteUser(@Param("id") id: number) {
     try {
       await this.userRepo.delete(id);
     } catch (error) {
@@ -76,48 +132,41 @@ export class UserService {
     }
   }
 
-  async getUser(@Param('id') id: number) {
+  async getUser(@Param("id") id: number) {
     const user = await this.userRepo.findOneBy({ id });
     if (!user) {
-      throw new NotFoundException('Not found');
+      throw new NotFoundException("Not found");
     }
     return user;
   }
 
-  async sendOtp(email: string) {
-    const otp = Math.floor(Math.random() * 999999);
-    const user = await this.findUser(email);
-    user.otp = otp;
-    //send email here
-    return await this.userRepo.save(user);
-  }
+  async resetPassword(password: string, req) {
+    const { email, otp } = req.user;
+    const user = await this.userRepo.findOne({ where: { email } });
 
-  async resetPassword(otp: number, email: string, password: string) {
-    // find user by email and otp
-    const user = await this.userRepo.findOne({ where: { email, otp } });
+    console.log("Email, OTP", email, otp);
 
-    if (!user) {
-      throw new NotFoundException('user not found');
+    if (!otp) {
+      throw new BadRequestException({ message: "Please verify OTP first" });
     }
 
     const hashedPassword = await this.hashPassword(password);
     user.password = hashedPassword;
-    user.otp = null;
 
     return await this.userRepo.save(user);
   }
 
-  async findUser(email: string) {
+  async getUserByEmail(email: string) {
     return await this.userRepo.findOneBy({ email });
   }
 
   async updateUser(
     @Body() updateUserDto: UpdateUserDto,
-    @Param('id') id: number,
+    @Param("id") id: number
   ) {
     const user = await this.userRepo.findOneBy({ id });
     if (!user) {
-      throw new NotFoundException({ message: 'User not found ...' });
+      throw new NotFoundException({ message: "User not found ..." });
     }
     try {
       return user;

@@ -23,7 +23,15 @@ export class ComplaintsService {
   }
 
   async findAll() {
-    return await this.complaintsRepo.find();
+    const complaints = await this.complaintsRepo.find({
+      relations: { user: true },
+    });
+
+    return complaints.map(({ user, status, ...complaint }) => ({
+      admin: user.email,
+      status: status ? "Resolved" : "Pending",
+      ...complaint,
+    }));
   }
 
   async findOne(id: number) {

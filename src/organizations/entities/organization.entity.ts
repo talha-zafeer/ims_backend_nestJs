@@ -19,6 +19,9 @@ export class Organization {
   @Column()
   bio: string;
 
+  @Column({ nullable: true })
+  logo: string;
+
   @Column("jsonb")
   address: {
     street: string;
@@ -33,7 +36,7 @@ export class Organization {
   @Column()
   rep_contact: string;
 
-  @OneToMany(() => User, (user) => user.organization)
+  @OneToMany(() => User, (user) => user.org)
   user: User;
 
   @BeforeInsert()
